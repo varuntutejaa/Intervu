@@ -4,7 +4,7 @@ import type { NavUser, Role } from "../../types";
 
 export type Session = { user: NavUser; role: Role | null; roles: Role[] };
 
-export const sessionKey = ["session"] as const;
+const sessionKey = ["session"] as const;
 
 async function fetchSession(): Promise<Session | null> {
   try {
@@ -18,41 +18,25 @@ export function useSessionQuery() {
   return useQuery({ queryKey: sessionKey, queryFn: fetchSession });
 }
 
+// Signup also logs the new account in, so the session is refreshed here
+// the same way login does.
 export function useSignupMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { email: string; password: string; name: string }) =>
-      apiJson<{ status: string }>(
-        "/api/auth/signup",
-        "POST",
-        input,
-        "Couldn't create your account. Try again.",
-      ),
-  });
-}
-
-export function useConfirmSignupMutation() {
-  return useMutation({
-    mutationFn: (input: { email: string; code: string }) =>
-      apiJson<{ status: string }>(
-        "/api/auth/confirm",
-        "POST",
-        input,
-        "Couldn't verify that code. Try again.",
-      ),
-  });
-}
-
-export function useResendCodeMutation() {
-  return useMutation({
-    mutationFn: (email: string) =>
-      apiJson<{ status: string }>("/api/auth/resend-code", "POST", { email }),
+    mutationFn: async (input: { email: string; password: string; name: string; role?: Role }) => {
+      await apiJson("/api/auth/signup", "POST", input, "Couldn't create your account. Try again.");
+      return fetchSession();
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(sessionKey, session);
+    },
   });
 }
 
 export function useLoginMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { email: string; password: string; role?: Role | null }) => {
+    mutationFn: async (input: { email: string; password: string; role?: Role }) => {
       await apiJson("/api/auth/login", "POST", input, "Couldn't log in. Try again.");
       return fetchSession();
     },

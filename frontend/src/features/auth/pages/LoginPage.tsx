@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      const session = await loginMutation.mutateAsync({ ...values, role: pendingRole });
+      const session = await loginMutation.mutateAsync({ ...values, role: pendingRole ?? undefined });
       if (session?.role && !session.roles.includes(session.role)) {
         navigate(`/profile-setup?role=${session.role}`);
       } else {
@@ -103,14 +103,6 @@ export default function LoginPage() {
                   showPassword={showPassword}
                   onToggleShowPassword={setShowPassword}
                   error={errors.password?.message}
-                  labelRight={
-                    <Link
-                      to="/forgot-password"
-                      className="text-xs font-medium text-black/40 underline underline-offset-2 transition-colors hover:text-black"
-                    >
-                      Forgot password?
-                    </Link>
-                  }
                 />
               )}
             />

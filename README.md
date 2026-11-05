@@ -5,9 +5,6 @@
 **AI-native job platform** connecting candidates and recruiters — resume-driven job matching, a two-sided application pipeline, an AI resume assistant grounded in real hiring guides, and one account that can hold both a candidate and a recruiter identity at once.
 
 [![CI](https://github.com/varuntutejaa/intervu/actions/workflows/ci.yml/badge.svg)](https://github.com/varuntutejaa/intervu/actions/workflows/ci.yml)
-[![Deploy Backend](https://github.com/varuntutejaa/intervu/actions/workflows/deploy.yml/badge.svg)](https://github.com/varuntutejaa/intervu/actions/workflows/deploy.yml)
-[![Deploy Frontend](https://github.com/varuntutejaa/intervu/actions/workflows/deploy-frontend.yml/badge.svg)](https://github.com/varuntutejaa/intervu/actions/workflows/deploy-frontend.yml)
-[![Build and Push Images](https://github.com/varuntutejaa/intervu/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/varuntutejaa/intervu/actions/workflows/build-and-push.yml)
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-149ECA?style=flat-square&logo=react&logoColor=white)
@@ -16,9 +13,6 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?style=flat-square&logo=reactquery&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat-square&logo=amazonaws&logoColor=white)
-
-**[Live app →](https://d2sbflfh62ti4k.cloudfront.net)**
 
 </div>
 
@@ -39,9 +33,6 @@
 - [Environment variables](#environment-variables)
 - [API reference](#api-reference)
 - [Testing](#testing)
-- [Docker](#docker)
-- [Deployment](#deployment)
-- [Infrastructure as code](#infrastructure-as-code)
 - [Security notes](#security-notes)
 - [Known limitations](#known-limitations)
 
@@ -61,7 +52,7 @@ Intervu is a full-stack job platform with two distinct experiences behind one lo
 <details open>
 <summary><strong>Auth</strong></summary>
 
-- Email/password via AWS Cognito (email verification flow included); Cognito is the sole system of record for passwords — it hashes and salts them internally, the application never sees or stores a password or its hash
+- Email/password accounts stored in Postgres — passwords are kept only as salted `scrypt` hashes (Node's built-in `crypto`, no extra dependency); signing up logs you straight in
 - Google sign-in via direct OAuth 2.0 (no third-party auth service in the loop)
 - JWT-based auth: the backend signs its own token after login and carries it in an httpOnly cookie — real JWT authentication, not JWT-in-localStorage, and stateless (no server-side session store, so logins survive a backend restart)
 - Role-Based Access Control enforced server-side on every protected route (`requireRole` checks the database, not the JWT claim alone) — hiding a button on the frontend is never the actual gate
@@ -116,30 +107,24 @@ Intervu is a full-stack job platform with two distinct experiences behind one lo
 | Client state | Zustand (see [Frontend architecture](#frontend-architecture) for why) |
 | Forms | React Hook Form + Zod |
 | Backend | Node.js, Express, TypeScript |
-| Database | PostgreSQL (AWS RDS) |
-| Auth | AWS Cognito (email/password) + direct Google OAuth |
+| Database | PostgreSQL |
+| Auth | Email/password (scrypt hashes in Postgres) + direct Google OAuth |
 | AI Resume Assistant | Groq (chat, OpenAI-compatible API) + `@huggingface/transformers` (local in-process embeddings, `all-MiniLM-L6-v2`), FAISS (`faiss-node`), LangChain text splitters, `pdf-parse` |
 | AI Resume Autofill | Groq structured JSON extraction + `pdf-parse` (shares the Groq client with the assistant above) |
-| Hosting — frontend | AWS S3 (private) behind AWS CloudFront |
-| Hosting — backend | AWS EC2 (Ubuntu) + Nginx reverse proxy + PM2 |
-| CI/CD | GitHub Actions — lint/typecheck/test/build gate on every push+PR, separate backend/frontend deploy workflows, and a Docker image build+push to GHCR on every merge to `main` |
-| Containerization | Docker (multi-stage builds for both backend and frontend) + Docker Compose for a fully self-contained local run |
-| Infrastructure as code | Terraform (`infra/`) — VPC, EC2, RDS, S3 + CloudFront, least-privilege IAM |
+| CI | GitHub Actions — lint/typecheck/test/build gate on every push and PR (`ci.yml`) |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Browser -->|HTTPS| CF[CloudFront]
-    CF -->|"/*"| S3[(S3 — static build)]
-    CF -->|"/api/*"| EC2[EC2: Nginx to PM2 to Express]
-    EC2 --> RDS[(RDS Postgres)]
-    EC2 --> Cognito[AWS Cognito]
-    EC2 --> Google[Google OAuth]
-    EC2 --> Groq[Groq LLM API]
+    Browser --> Web[Vite: frontend]
+    Web -->|"/api/*"| API[Express backend]
+    API --> DB[(Postgres)]
+    API --> Google[Google OAuth]
+    API --> Groq[Groq LLM API]
 ```
 
-Frontend and backend are served from the **same CloudFront domain** — CloudFront routes `/api/*` to the EC2 backend and everything else to the S3-hosted static build. That means no CORS configuration and no mixed-content issues in production, and the auth cookie works exactly the same way as it does in local dev (where Vite's dev server proxies `/api` to the backend instead).
+Frontend and backend are served from the **same origin** — Vite's dev server serves the frontend and proxies `/api/*` to the backend, so the auth cookie works without any CORS setup.
 
 ### Backend architecture
 
@@ -172,17 +157,11 @@ sequenceDiagram
     actor U as User
     participant FE as Frontend
     participant BE as Backend
-    participant Cog as Cognito
     participant DB as Postgres
 
     U->>FE: Sign up (email, password, role)
     FE->>BE: POST /auth/signup
-    BE->>Cog: Create user
-    Cog-->>U: Verification code (email)
-    U->>FE: Enter code
-    FE->>BE: POST /auth/confirm
-    FE->>BE: POST /auth/login
-    BE->>Cog: Verify credentials
+    BE->>DB: INSERT user (scrypt password hash)
     BE-->>FE: Set httpOnly JWT cookie
     FE->>BE: GET /profile
     BE->>DB: SELECT profile WHERE auth_sub, role
@@ -195,7 +174,7 @@ sequenceDiagram
     end
 ```
 
-Google sign-in follows the same shape via a full-page OAuth redirect instead of steps 1–4; either way it lands back on `/`, and the frontend's `HomeRoute` runs the same "does this role have a profile yet" check before deciding where to send them.
+Login (`POST /auth/login`) checks the password against the stored hash and sets the same cookie. Google sign-in follows the same shape via a full-page OAuth redirect; either way it lands back on `/`, and the frontend's `HomeRoute` runs the same "does this role have a profile yet" check before deciding where to send them.
 
 </details>
 
@@ -340,7 +319,6 @@ backend/
   data/rag/<strategy>/   # Generated FAISS indexes + metadata (gitignored build output)
   scripts/ingest.ts      # npm run ingest — builds both chunking-strategy indexes
   openapi.json            # OpenAPI 3.0 spec — served at /api/docs (Swagger UI) and /api/openapi.json
-  Dockerfile, .dockerignore
   src/
     index.ts             # Express app entry point — middleware, route mounting, Swagger UI, error handler
     routes/               # Router() wiring only, per resource: auth, oauth, profile, jobs, candidates, applications, chat, resume
@@ -349,7 +327,7 @@ backend/
     repositories/            # The only files that call pool.query()
     schemas/                  # Zod schemas per resource, shared by every route's validation
     middleware/                # asyncHandler, requireRole (throws HttpError), auth (JWT cookie read/set/clear), errorHandler
-    lib/                        # db pool, Cognito client, JWT sign/verify, logger (pino), httpError, pagination, dataUrl, profiles (identity linking)
+    lib/                        # db pool, password hashing, JWT sign/verify, logger (pino), httpError, pagination, dataUrl, profiles (identity linking)
     rag/                         # config, pdfLoader, chunker, embeddings, vectorStore, retriever, prompt, llm, ragService
     **/*.test.ts                  # Vitest unit tests, colocated with the code they cover
 
@@ -369,25 +347,22 @@ frontend/src/
     candidates/            # Recruiter-facing candidate directory
     landing/               # Marketing page + AI Resume Assistant chat UI
 
-infra/                  # Terraform IaC (VPC/EC2/RDS/S3/CloudFront/IAM — written, not applied, see below)
-                         # plus cloudfront-config.json/s3-bucket-policy.json, the actual configs used to create the live resources
-docker-compose.yml       # backend + frontend, backend talks to real RDS by default (opt-in local Postgres via --profile local-db)
-.github/workflows/       # ci.yml (lint+typecheck+test+build), deploy.yml (backend to EC2), deploy-frontend.yml (S3 + CloudFront), build-and-push.yml (images to GHCR)
+.github/workflows/       # ci.yml (lint+typecheck+test+build)
 ```
 
 </details>
 
 ## Getting started
 
-**Prerequisites:** Node.js 20+, a PostgreSQL database (AWS RDS or local), an AWS Cognito User Pool, a free [Groq](https://console.groq.com/keys) API key.
+**Prerequisites:** Node.js 20+, a PostgreSQL database — e.g. a free [Supabase](https://supabase.com) project (use its "Session pooler" connection string as `DATABASE_URL`, with `DB_SSL=true`) or a local install, a free [Groq](https://console.groq.com/keys) API key.
 
 **Backend**
 
 ```bash
 cd backend
-cp .env.example .env      # fill in RDS + Cognito + OAuth + GROQ_API_KEY — see below
+cp .env.example .env      # fill in DATABASE_URL (or PG* fields) + JWT_SECRET + GROQ_API_KEY (Google OAuth optional) — see below
 npm install
-node scripts/init-db.mjs  # creates the database (if missing) and applies schema.sql
+npm run db:init           # applies schema.sql (and creates PGDATABASE first if you use the PG* fields)
 npm run ingest             # builds both RAG chunking-strategy indexes from backend/knowledge/*.pdf
                             # (first run also downloads the local embedding model, ~90MB, one-time)
 npm run dev                # http://localhost:3001
@@ -430,13 +405,12 @@ All backend configuration lives in `backend/.env` (see `backend/.env.example` fo
 | Variable | Purpose |
 |---|---|
 | `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` (or `DATABASE_URL`) | Postgres connection |
-| `DB_SSL` | Set `true` for RDS (default) |
+| `DB_SSL` | Set `true` if your Postgres server requires TLS (default `false`) |
 | `PORT` | Backend listen port (default `3001`) |
 | `CORS_ORIGIN` | Allowed frontend origin for CORS |
 | `PUBLIC_URL` | The externally-reachable origin the app is served from — used to build OAuth redirect URIs and the post-login redirect target |
-| `COGNITO_REGION`, `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET` | Cognito User Pool app client |
 | `JWT_SECRET` | Random string signing this app's own auth JWT (httpOnly cookie) |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth client |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth client (optional) |
 | `GROQ_API_KEY` | Required for the AI Resume Assistant's chat model and resume-autofill extraction ([console.groq.com/keys](https://console.groq.com/keys), free tier) |
 | `GROQ_CHAT_MODEL` | Chat model for grounded answers and resume extraction (default `llama-3.3-70b-versatile`) |
 | `EMBEDDING_MODEL` | Local sentence-transformer model run in-process via `@huggingface/transformers` (default `Xenova/all-MiniLM-L6-v2`) — changing this requires re-running `npm run ingest` |
@@ -461,9 +435,7 @@ Every response is wrapped in a consistent envelope: `{ success: true, data: <pay
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/auth/signup` | — | Create a Cognito account, sends a verification code |
-| POST | `/auth/confirm` | — | Confirm the verification code |
-| POST | `/auth/resend-code` | — | Resend the verification code |
+| POST | `/auth/signup` | — | Create an email/password account and log it in |
 | POST | `/auth/login` | — | Email/password login |
 | GET | `/auth/google/start` | — | Kick off OAuth redirect |
 | GET | `/auth/google/callback` | — | OAuth callback — resolves to the same account as a password login under the same email (see [Security notes](#security-notes)), sets the auth cookie |
@@ -511,7 +483,7 @@ Unit tests are colocated with the code they cover (`src/**/*.test.ts`) and run a
 
 - `applicationsService.test.ts` — the candidate self-service restrictions: status/delete are rejected for applications to real postings (403, must withdraw instead) but allowed for manually-logged ones
 - `jobsService.test.ts` — ownership checks (a recruiter can't edit/view-applicants-for/leave-feedback-on another recruiter's posting) and the dashboard stats aggregation math (per-status rollups, per-job breakdown, interview-completion-rate rounding and its divide-by-zero guard)
-- `authService.test.ts` — every mapped Cognito exception resolves to its specific friendly message, an *unmapped* one still resolves to a safe generic message (never leaks the raw AWS error), and the login-role-selection fallback logic
+- `authService.test.ts` — duplicate-email and short-password rejection, passwords stored only as hashes, unknown-email and wrong-password logins get the same 401 message, and the login-role-selection logic
 - `profileService.test.ts` — the active-role default vs. an explicit `?role=` override, and that saving a profile re-signs the session cookie with that role active
 - `resumeService.test.ts` — the AI-extraction sanitizer: bare `linkedin.com/...` URLs get `https://` prepended, an out-of-range experience value is discarded rather than trusted, non-string entries are filtered out of skill arrays
 - `chatService.test.ts` — an attached resume takes priority over a stored one even when logged in, and the stored-resume lookup is never even attempted once an attachment is present
@@ -527,65 +499,24 @@ Unit tests are colocated with the code they cover (`src/**/*.test.ts`) and run a
 - `format.test.ts` — the rupee/lakh salary formatting, including the crore-scale digit-grouping case
 - `jobs/schema.test.ts` — the job-form-to-API-payload transform: skills string splitting/trimming, empty-string-to-`null` coercion for optional fields, salary string-to-number conversion
 
-## Docker
-
-```bash
-docker compose up --build
-```
-
-Brings up two containers: the backend (`Dockerfile`, multi-stage: `tsc` build → slim runtime image) and the frontend (`Dockerfile`, multi-stage: Vite build → nginx, which also reverse-proxies `/api` to the backend container — the same "one origin" shape CloudFront gives in prod). Backend config comes entirely from `backend/.env` (`env_file:` in `docker-compose.yml`) — by default that means the **real RDS instance**, the same database the live site uses, so the Docker stack shows real data immediately.
-
-A bundled local Postgres (`db`) is available as an opt-in alternative — fully isolated from production, no RDS credentials needed. It's behind a Compose profile so it doesn't start by default:
-
-```bash
-docker compose --profile local-db up --build
-```
-
-Using it requires overriding the backend's DB env vars back to the local container (`PGHOST=db`, `PGPORT=5432`, `PGDATABASE=intervu`, `PGUSER=postgres`, `PGPASSWORD=postgres`, `DB_SSL=false` — see the comment in `docker-compose.yml`), plus applying the schema and building a RAG index inside the container the first time:
-
-```bash
-docker compose exec backend node scripts/init-db.mjs
-docker compose exec backend npm run ingest
-```
-
-Frontend: `http://localhost:8080`. Backend directly: `http://localhost:3001` (docs at `/api/docs`).
-
-## Deployment
-
-**Backend** — an EC2 instance runs the Express app under PM2 (auto-restarts on crash and on instance reboot via a systemd unit), with Nginx reverse-proxying port 80 to the app. `deploy.yml` SSHes in on every push to `main` touching `backend/**`, pulls, rebuilds, and restarts PM2.
-
-**Frontend** — `deploy-frontend.yml` builds the Vite app and syncs it to a private S3 bucket on every push to `main` touching `frontend/**`, then invalidates the CloudFront cache. The S3 bucket has no public access — it's only reachable through CloudFront via an Origin Access Control.
-
-**Images** — `build-and-push.yml` builds both Dockerfiles and pushes `ghcr.io/varuntutejaa/intervu-backend` and `ghcr.io/varuntutejaa/intervu-frontend` (tagged `latest` and the commit SHA) to GitHub Container Registry on every push to `main`, authenticated with the repo's own `GITHUB_TOKEN` — no extra registry credentials to manage. This is independent of the EC2/S3 deploy path above (which ships code directly, not an image) — it exists so the app can be run anywhere Docker runs, not just on this specific EC2 box.
-
-All three deploy-related workflows also support manual runs via `workflow_dispatch` from the Actions tab. None of them gate on tests — `ci.yml` is the actual quality gate (lint, typecheck, `vitest`, and a full build for both backend and frontend), running on every push and pull request, deploy or not.
-
-## Infrastructure as code
-
-`infra/*.tf` describes the deployment environment above as Terraform: VPC + two public subnets, the backend EC2 instance (least-privilege IAM — its instance role grants exactly the four Cognito actions `backend/src/lib/cognito.ts` actually calls, scoped to one User Pool ARN, nothing account-wide), RDS Postgres, and S3 + CloudFront for the frontend. CI/CD credentials use GitHub's OIDC provider (`deployer.tf`) rather than long-lived access keys, scoped to exactly `s3:PutObject`/`DeleteObject`/`ListBucket` on this project's own bucket and `cloudfront:CreateInvalidation` on this project's own distribution.
-
-**This has not been applied** — see `infra/README.md` for why, and for `terraform init`/`plan`/`apply` usage. The bucket/distribution actually live today were created manually before this Terraform config existed (their raw configs are kept alongside it, `infra/cloudfront-config.json` / `infra/s3-bucket-policy.json`, for reference).
-
 ## Security notes
 
-- **Password hashing:** passwords never touch the application layer — Cognito is the sole system of record for them and hashes/salts every password internally (industry-standard SRP-based storage); the app never sees, stores, or has access to a password or its hash. Building a second, parallel password store here would be a strictly worse security posture than delegating to Cognito.
+- **Password hashing:** passwords are stored only as salted `scrypt` hashes (`lib/password.ts`), compared in constant time. A login for an unknown email still runs a hash check, so response timing doesn't reveal which emails have accounts.
 - **JWT authentication:** the backend signs its own JWT after login (`lib/jwt.ts`) and carries it in an `httpOnly`, `sameSite=lax` cookie — `secure` is enabled automatically in production. This is a real, stateless JWT (no server-side session store — a backend restart no longer logs anyone out), while still keeping the XSS protection of `httpOnly` that JWT-in-localStorage gives up.
 - **RBAC enforced server-side:** `requireRole` checks the `profiles` table on every protected request — the frontend hiding a button is a UX nicety, never the actual gate. A recruiter can only see applicants for jobs *they* posted; a candidate can only see their own applications and only their own interview feedback.
-- **Cross-provider identity linking:** Cognito (password) and Google (OAuth) each mint their own, unrelated identity for the same person. `resolveCanonicalSub` (`lib/profiles.ts`) resolves an OAuth login to the *existing* account for that email (case-insensitive) if one already has a profile, instead of silently creating a second, disconnected account — the bug this fixed and its regression test are in `lib/profiles.test.ts`.
+- **Cross-provider identity linking:** email/password and Google (OAuth) each mint their own, unrelated identity for the same person. `resolveCanonicalSub` (`lib/profiles.ts`) resolves an OAuth login to the *existing* account for that email (case-insensitive) if one already has a profile, instead of silently creating a second, disconnected account — the bug this fixed and its regression test are in `lib/profiles.test.ts`.
 - **Input validation:** every route validates against a `zod` schema (`schemas/`) — including server-side resume/avatar upload limits (PDF-only ≤4MB, image-only ≤2MB) that don't just trust whatever the frontend already checked.
 - Every database query is parameterized (no string-built SQL)
-- OAuth client secrets, the Cognito app secret, and the Groq API key never reach the frontend bundle
+- OAuth client secrets, the JWT secret, and the Groq API key never reach the frontend bundle
 - Structured request logs (`pino-http`) redact resume/avatar payloads, passwords, and the auth cookie — never end up in a log line
 
 ## Known limitations
 
-- Resumes, company logos, and avatars are stored inline (base64/filename only) — no S3 object storage wired up for user uploads yet
-- No rate limiting on auth endpoints beyond what Cognito enforces natively
-- The EC2 instance is a single node — no load balancer or auto-scaling
-- Forgot-password is a client-side-only confirmation screen — no backend reset-password endpoint exists yet
+- Resumes, company logos, and avatars are stored inline in Postgres (base64 data URLs) — no separate file storage
+- No rate limiting on the login/signup endpoints
+- No email verification or password reset — there's no email service. Since email addresses aren't verified, Google sign-in linking (above) trusts that whoever created a password account under an email owns it
 - The AI Resume Assistant's embedding model (~90MB) downloads on first use and is cached under the backend's `node_modules/.cache` — the first `npm run ingest` or `/api/chat` call after a fresh install will be slower while that download happens
 - Resume personalization in `/api/chat` re-extracts and re-parses the candidate's PDF on every chat request rather than caching the extracted text — fine at this scale, but a repeat cost worth caching if usage grows
 - Frontend test coverage is intentionally narrow (pure logic + one representative component test) rather than exhaustive — no tests yet for the data-fetching hooks or full page flows
 - `resumesService` (the resume library — list/upload/view/replace/delete) doesn't have a dedicated test file yet, unlike every other service
-- Terraform (`infra/*.tf`) describes the deployment environment but has never been applied — the live infrastructure was provisioned manually, and has since drifted further from what Terraform describes (e.g. the live backend instance's security group is a manually-created one, not `ec2.tf`'s). Adopting Terraform means either importing those existing resources or cutting over to freshly-provisioned ones — not a blind `terraform apply` against what's live today
 - `npm audit` flags a high-severity issue in `adm-zip` (pulled in transitively via `onnxruntime-node` ← `@huggingface/transformers`). It's exercised only inside `onnxruntime-node`'s own install script — unzipping vendor-provided runtime binaries at `npm ci` time — never by this app's request-handling code, so there's no reachable path from user input. The available fix is a breaking downgrade of `@huggingface/transformers`, not applied yet since it's load-bearing for the whole RAG pipeline

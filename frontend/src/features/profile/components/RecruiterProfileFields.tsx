@@ -7,7 +7,7 @@ import {
 } from "../../../components/aurora/AuroraLayout";
 import type { RecruiterProfileFormValues } from "../schema";
 
-export const COMPANY_SIZE_OPTIONS = [
+const COMPANY_SIZE_OPTIONS = [
   { value: "1-10", label: "1–10 employees" },
   { value: "11-50", label: "11–50 employees" },
   { value: "51-200", label: "51–200 employees" },

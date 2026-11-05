@@ -9,13 +9,8 @@ import {
   PasswordField,
   SocialAuthOptions,
 } from "../../../components/aurora/AuroraLayout";
-import { useConfirmSignupMutation, useLoginMutation, useResendCodeMutation, useSignupMutation } from "../api";
-import {
-  confirmCodeSchema,
-  signupSchema,
-  type ConfirmCodeFormValues,
-  type SignupFormValues,
-} from "../schema";
+import { useSignupMutation } from "../api";
+import { signupSchema, type SignupFormValues } from "../schema";
 import { useAuthFlowStore } from "../store";
 
 const STRENGTH_LABELS = ["Weak", "Weak", "Fair", "Good", "Strong"];
@@ -50,20 +45,12 @@ function PasswordStrengthBar({ password }: { password: string }) {
   );
 }
 
-type Step = "form" | "verify";
-
 export default function SignupPage() {
   const navigate = useNavigate();
   const { pendingRole, setPendingRole } = useAuthFlowStore();
-  const [step, setStep] = useState<Step>("form");
   const [showPassword, setShowPassword] = useState(false);
-  const [submittedEmail, setSubmittedEmail] = useState("");
-  const [submittedPassword, setSubmittedPassword] = useState("");
 
   const signupMutation = useSignupMutation();
-  const confirmMutation = useConfirmSignupMutation();
-  const resendCodeMutation = useResendCodeMutation();
-  const loginMutation = useLoginMutation();
 
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -71,39 +58,17 @@ export default function SignupPage() {
   });
   const password = signupForm.watch("password");
 
-  const confirmForm = useForm<ConfirmCodeFormValues>({
-    resolver: zodResolver(confirmCodeSchema),
-    defaultValues: { code: "" },
-  });
-
   const onSubmitForm = async (values: SignupFormValues) => {
     try {
       await signupMutation.mutateAsync({
         email: values.email,
         password: values.password,
         name: values.fullName,
+        role: pendingRole ?? undefined,
       });
-      setSubmittedEmail(values.email);
-      setSubmittedPassword(values.password);
-      setStep("verify");
+      navigate("/profile-setup");
     } catch {
       // surfaced via signupMutation.error below
-    }
-  };
-
-  const onSubmitVerify = async (values: ConfirmCodeFormValues) => {
-    try {
-      await confirmMutation.mutateAsync({ email: submittedEmail, code: values.code });
-      // Confirming doesn't return a session — log them straight in so they
-      // don't have to re-enter their password right after signing up.
-      try {
-        await loginMutation.mutateAsync({ email: submittedEmail, password: submittedPassword });
-        navigate("/profile-setup");
-      } catch {
-        navigate("/login");
-      }
-    } catch {
-      // surfaced via confirmMutation.error below
     }
   };
 
@@ -119,51 +84,6 @@ export default function SignupPage() {
           description="This just tailors what you see next — you can't get this wrong."
           onSelect={setPendingRole}
         />
-      ) : step === "verify" ? (
-        <div>
-          <h2 className="text-3xl font-medium tracking-tight text-black">Check your email</h2>
-          <p className="mt-2 text-sm text-black/40">
-            Enter the verification code we sent to{" "}
-            <span className="text-black">{submittedEmail}</span>.
-          </p>
-
-          <form onSubmit={confirmForm.handleSubmit(onSubmitVerify)} className="mt-7 space-y-4">
-            <Controller
-              name="code"
-              control={confirmForm.control}
-              render={({ field }) => (
-                <InputGroup
-                  label="Verification code"
-                  placeholder="123456"
-                  type="text"
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={confirmForm.formState.errors.code?.message}
-                />
-              )}
-            />
-
-            {confirmMutation.error && (
-              <p className="text-sm text-red-600">{confirmMutation.error.message}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={confirmMutation.isPending || loginMutation.isPending}
-              className="mt-1 h-14 w-full rounded-xl bg-black font-semibold text-white transition-all hover:bg-black/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {confirmMutation.isPending || loginMutation.isPending ? "Verifying…" : "Verify"}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            onClick={() => resendCodeMutation.mutate(submittedEmail)}
-            className="mt-4 text-xs font-medium text-black/40 underline underline-offset-2 transition-colors hover:text-black"
-          >
-            {resendCodeMutation.isPending ? "Resending…" : "Resend code"}
-          </button>
-        </div>
       ) : (
         <>
           <div>

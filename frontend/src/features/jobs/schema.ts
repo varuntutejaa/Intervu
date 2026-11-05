@@ -43,6 +43,31 @@ export const EMPTY_JOB_FORM_VALUES: JobFormValues = {
   companyLogoUrl: "",
 };
 
+const toOptions = (values: string[]) => values.map((v) => ({ value: v, label: v }));
+
+// Select options for the job form, shared by PostJobPage and EditJobModal.
+export const JOB_TYPE_OPTIONS = toOptions(["Full-time", "Part-time", "Internship", "Contract"]);
+export const WORK_MODE_OPTIONS = toOptions(["Onsite", "Remote", "Hybrid"]);
+export const EXPERIENCE_OPTIONS = [
+  { value: "Fresher", label: "Fresher" },
+  { value: "1-3 Years", label: "1–3 Years" },
+  { value: "3-5 Years", label: "3–5 Years" },
+  { value: "5-10 Years", label: "5–10 Years" },
+];
+export const TRAVEL_OPTIONS = toOptions(["None", "Up to 25%", "25-50%", "50-75%", "75-100%"]);
+export const DISCIPLINE_OPTIONS = toOptions([
+  "Engineering",
+  "Product",
+  "Design",
+  "Sales",
+  "Marketing",
+  "Operations",
+  "Customer Support",
+  "Finance",
+  "Human Resources",
+  "Other",
+]);
+
 // Shared by PostJobPage (create) and recruiter-dashboard's EditJobModal
 // (edit) — both submit the same shape to the same underlying fields.
 export function jobFormValuesToPayload(values: JobFormValues) {

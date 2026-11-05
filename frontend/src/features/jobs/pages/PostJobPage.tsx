@@ -5,45 +5,17 @@ import { NavBar } from "../../../components/chrome/NavBar";
 import { InputGroup, SelectGroup, TextAreaGroup } from "../../../components/aurora/AuroraLayout";
 import { useProfileQuery } from "../../profile/api";
 import { useCreateJobMutation } from "../api";
-import { EMPTY_JOB_FORM_VALUES, jobFormSchema, jobFormValuesToPayload, type JobFormValues } from "../schema";
-
-const JOB_TYPE_OPTIONS = [
-  { value: "Full-time", label: "Full-time" },
-  { value: "Part-time", label: "Part-time" },
-  { value: "Internship", label: "Internship" },
-  { value: "Contract", label: "Contract" },
-];
-
-const WORK_MODE_OPTIONS = [
-  { value: "Onsite", label: "Onsite" },
-  { value: "Remote", label: "Remote" },
-  { value: "Hybrid", label: "Hybrid" },
-];
-
-const EXPERIENCE_OPTIONS = [
-  { value: "Fresher", label: "Fresher" },
-  { value: "1-3 Years", label: "1–3 Years" },
-  { value: "3-5 Years", label: "3–5 Years" },
-  { value: "5-10 Years", label: "5–10 Years" },
-];
-
-const TRAVEL_OPTIONS = ["None", "Up to 25%", "25-50%", "50-75%", "75-100%"].map((v) => ({
-  value: v,
-  label: v,
-}));
-
-const DISCIPLINE_OPTIONS = [
-  "Engineering",
-  "Product",
-  "Design",
-  "Sales",
-  "Marketing",
-  "Operations",
-  "Customer Support",
-  "Finance",
-  "Human Resources",
-  "Other",
-].map((v) => ({ value: v, label: v }));
+import {
+  DISCIPLINE_OPTIONS,
+  EMPTY_JOB_FORM_VALUES,
+  EXPERIENCE_OPTIONS,
+  JOB_TYPE_OPTIONS,
+  TRAVEL_OPTIONS,
+  WORK_MODE_OPTIONS,
+  jobFormSchema,
+  jobFormValuesToPayload,
+  type JobFormValues,
+} from "../schema";
 
 export default function PostJobPage() {
   const profileQuery = useProfileQuery();

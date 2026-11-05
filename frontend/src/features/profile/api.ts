@@ -30,7 +30,7 @@ export type ProfileRow = {
   avatar_url: string | null;
 };
 
-export const profileKey = ["profile"] as const;
+const profileKey = ["profile"] as const;
 
 export function useProfileQuery() {
   return useQuery({

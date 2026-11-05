@@ -1,8 +1,7 @@
 name: CI
 
-# Runs on every push and PR — a quality gate, separate from deploy.yml /
-# deploy-frontend.yml (which only run on pushes to main and touch real
-# infra). Nothing here needs secrets or AWS credentials.
+# Runs on every push and PR — lint, typecheck, test and build. Needs no
+# secrets.
 on:
   push:
     branches: [main]

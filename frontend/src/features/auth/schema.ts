@@ -18,13 +18,3 @@ export const signupSchema = z
     path: ["confirmPassword"],
   });
 export type SignupFormValues = z.infer<typeof signupSchema>;
-
-export const confirmCodeSchema = z.object({
-  code: z.string().min(1, "Verification code is required."),
-});
-export type ConfirmCodeFormValues = z.infer<typeof confirmCodeSchema>;
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Enter a valid email address."),
-});
-export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;

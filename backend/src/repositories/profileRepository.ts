@@ -8,7 +8,7 @@ export async function findProfile(sub: string, role: "candidate" | "recruiter") 
 
 // One email can only ever be one role — a candidate profile blocks that
 // same address from ever becoming a recruiter, and vice versa. Checked by
-// email (not auth_sub) since Cognito and Google OAuth each mint a
+// email (not auth_sub) since email/password and Google OAuth each mint a
 // different sub for the same person.
 export async function hasProfileForOtherRole(email: string, role: "candidate" | "recruiter"): Promise<boolean> {
   const result = await pool.query("SELECT 1 FROM profiles WHERE lower(email) = lower($1) AND role != $2 LIMIT 1", [

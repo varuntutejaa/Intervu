@@ -19,8 +19,8 @@ const ITEM_VARIANTS = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-// Shared shell for the Aurora-styled pages (signup, login, profile setup,
-// forgot password): a video hero on the left with a staggered reveal, and a
+// Shared shell for the Aurora-styled pages (signup, login, profile setup):
+// a video hero on the left with a staggered reveal, and a
 // fading-in form column on the right.
 export function AuroraShell({
   brand,
@@ -131,7 +131,7 @@ function AuroraRoleCard({
 
 type IconComponent = LucideIcon | ((props: { className?: string }) => ReactNode);
 
-export function SocialButton({
+function SocialButton({
   icon: Icon,
   label,
   onClick,
@@ -165,11 +165,10 @@ export function SocialButton({
 }
 
 // A Google link plus the "Or" divider — these always appear together, in
-// this order, across every Aurora auth page. Cognito remains the system of
-// record for email/password; this is a plain link to this server's OAuth
-// kickoff route, which redirects through Google's own login page and back
-// to a callback that creates the same kind of session cookie the Cognito
-// login route does. A full page navigation, not a popup, so there's no
+// this order, across every Aurora auth page. This is a plain link to this
+// server's OAuth kickoff route, which redirects through Google's own login
+// page and back to a callback that creates the same kind of session cookie
+// the email/password login route does. A full page navigation, not a popup, so there's no
 // client-side token handling here.
 //
 // `role` is only meaningful on the Login page — it's round-tripped through
@@ -196,31 +195,24 @@ export function SocialAuthOptions({ role }: { role?: Role | null }) {
 
 export function PasswordField({
   label = "Password",
-  labelRight,
   value,
   onChange,
   showPassword,
   onToggleShowPassword,
-  helperText,
   error,
   children,
 }: {
   label?: string;
-  labelRight?: ReactNode;
   value: string;
   onChange: (value: string) => void;
   showPassword: boolean;
   onToggleShowPassword: (value: boolean) => void;
-  helperText?: string;
   error?: string;
   children?: ReactNode;
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-black">{label}</label>
-        {labelRight}
-      </div>
+      <label className="text-sm font-medium text-black">{label}</label>
       <div className="relative mt-2">
         <input
           type={showPassword ? "text" : "password"}
@@ -238,17 +230,13 @@ export function PasswordField({
           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
-      {error ? (
-        <p className="mt-1.5 text-xs text-red-600">{error}</p>
-      ) : (
-        helperText && <p className="mt-1.5 text-xs text-black/30">{helperText}</p>
-      )}
+      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
       {children}
     </div>
   );
 }
 
-export function GoogleLogo({ className }: { className?: string }) {
+function GoogleLogo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className}>
       <path

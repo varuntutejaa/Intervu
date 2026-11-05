@@ -14,7 +14,7 @@
   "tags": [
     {
       "name": "Auth",
-      "description": "Signup/login/session (Cognito email+password)"
+      "description": "Signup/login/session (email+password)"
     },
     {
       "name": "OAuth",
@@ -460,7 +460,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Register a new account (Cognito) — sends a confirmation code by email",
+        "summary": "Register a new account and log it in — sets the httpOnly session cookie",
         "requestBody": {
           "required": true,
           "content": {
@@ -476,48 +476,14 @@
                     "type": "string"
                   },
                   "password": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 8
                   },
                   "name": {
                     "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Confirmation code sent"
-          },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/auth/confirm": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Confirm signup with the emailed code",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email",
-                  "code"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string"
                   },
-                  "code": {
-                    "type": "string"
+                  "role": {
+                    "$ref": "#/components/schemas/Role"
                   }
                 }
               }
@@ -526,41 +492,7 @@
         },
         "responses": {
           "200": {
-            "description": "Confirmed"
-          },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/auth/resend-code": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Resend the signup confirmation code",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Sent"
+            "description": "Account created and logged in"
           },
           "400": {
             "$ref": "#/components/responses/ValidationError"

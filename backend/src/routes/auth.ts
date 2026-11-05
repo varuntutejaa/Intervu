@@ -5,8 +5,6 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 export const authRouter = Router();
 
 authRouter.post("/signup", asyncHandler(authController.signup));
-authRouter.post("/confirm", asyncHandler(authController.confirm));
-authRouter.post("/resend-code", asyncHandler(authController.resendCode));
 authRouter.post("/login", asyncHandler(authController.login));
 authRouter.post("/logout", asyncHandler(authController.logout));
 authRouter.get("/me", asyncHandler(authController.me));

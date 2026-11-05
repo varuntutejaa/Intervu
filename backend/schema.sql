@@ -149,10 +149,22 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NUL
 CREATE UNIQUE INDEX IF NOT EXISTS applications_job_candidate_unique
   ON applications (job_id, candidate_sub);
 
+-- Email/password accounts. Passwords are stored only as salted scrypt
+-- hashes (see src/lib/password.ts). Google sign-ins don't get a row here;
+-- their identity is "google:<id>".
+CREATE TABLE IF NOT EXISTS users (
+  sub TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  name TEXT,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (lower(email));
+
 -- One row per (person, role) — a single login can hold both a candidate and
 -- a recruiter profile at once and switch between them (see activeRole in
--- the session), keyed by their auth identity's `sub` — a Cognito user pool
--- sub, or "google:<id>" for social sign-in. Candidate and
+-- the session), keyed by their auth identity's `sub` — users.sub for an
+-- email/password account, or "google:<id>" for Google sign-in. Candidate and
 -- recruiter fields share one table (nullable columns) since the two field
 -- sets never overlap within a single row.
 DO $$ BEGIN
@@ -174,9 +186,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   skills TEXT,
   bio TEXT,
   resume_filename TEXT,
-  -- the resume file itself, stored as a data: URL (no S3/object storage
-  -- wired up yet) — resume_filename alone let you save a name but never
-  -- actually let anyone open the file
+  -- the resume file itself, stored as a data: URL
   resume_data TEXT,
 
   -- recruiter fields
@@ -188,8 +198,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   company_bio TEXT,
   company_logo_filename TEXT,
 
-  -- profile picture, stored as a data: URL (no S3/object storage wired up
-  -- yet) — fine at this scale, worth moving to real object storage later
+  -- profile picture, stored as a data: URL
   avatar_url TEXT,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

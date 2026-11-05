@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { avatarDataUrlSchema, resumeDataUrlSchema } from "./common.js";
-
-export const roleSchema = z.enum(["candidate", "recruiter"]);
+import { avatarDataUrlSchema, resumeDataUrlSchema, roleSchema } from "./common.js";
 
 // Candidate and recruiter profile fields share one payload shape (nullable
 // columns on one `profiles` row per (auth_sub, role)) — every field is
@@ -9,7 +7,7 @@ export const roleSchema = z.enum(["candidate", "recruiter"]);
 // the frontend routinely round-trips an unchanged nullable column back as
 // an explicit `null` (e.g. a profile with no avatar yet) rather than
 // omitting the key, so `.optional()` alone would wrongly reject that.
-export const profileFieldsSchema = z.object({
+const profileFieldsSchema = z.object({
   fullName: z.string().nullish(),
   phoneNumber: z.string().nullish(),
   desiredRole: z.string().nullish(),

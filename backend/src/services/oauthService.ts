@@ -1,9 +1,8 @@
 import { decodeJwtPayload } from "../lib/jwt.js";
 import { resolveActiveRole, resolveCanonicalSub } from "../lib/profiles.js";
 
-// The publicly-reachable origin the app is served from — same value in dev
-// (proxied by Vite to this server) and prod (proxied by CloudFront to this
-// server), so it doubles as both the OAuth redirect_uri host and the
+// The publicly-reachable origin the app is served from — Vite proxies /api
+// to this server — so it doubles as both the OAuth redirect_uri host and the
 // post-login redirect target. Not the same thing as this process's own bind
 // address, which Google can't reach directly.
 export const PUBLIC_URL = process.env.PUBLIC_URL ?? "http://localhost:5174";
@@ -13,7 +12,7 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 
 // Round-trips the role picked on the login screen through the provider via
 // the standard OAuth `state` param, so the callback can enforce it the same
-// way the Cognito login route does.
+// way the email/password login route does.
 export function roleFromState(state: unknown): "candidate" | "recruiter" | undefined {
   return state === "candidate" || state === "recruiter" ? state : undefined;
 }

@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { dataUrlByteSize, dataUrlMimeType } from "../lib/dataUrl.js";
 
+export const roleSchema = z.enum(["candidate", "recruiter"]);
+
 // Mirrors the frontend's own limits (lib/files.ts) — enforced here too since
 // a direct API call bypasses whatever the browser checks.
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-export const MAX_RESUME_BYTES = 4 * 1024 * 1024;
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
 
 export const resumeDataUrlSchema = z
   .string()

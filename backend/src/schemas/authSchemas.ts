@@ -1,20 +1,11 @@
 import { z } from "zod";
-
-export const roleSchema = z.enum(["candidate", "recruiter"]);
+import { roleSchema } from "./common.js";
 
 export const signupSchema = z.object({
-  email: z.string().trim().min(1, "Email and password are required."),
-  password: z.string().min(1, "Email and password are required."),
-  name: z.string().optional(),
-});
-
-export const confirmSchema = z.object({
-  email: z.string().trim().min(1, "Email and code are required."),
-  code: z.string().min(1, "Email and code are required."),
-});
-
-export const resendCodeSchema = z.object({
-  email: z.string().trim().min(1, "Email is required."),
+  email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
+  name: z.string().trim().optional(),
+  role: roleSchema.optional(),
 });
 
 export const loginSchema = z.object({

@@ -1,11 +1,10 @@
 import type { Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { hashPassword } from "../lib/password.js";
 
-vi.mock("../lib/cognito.js", () => ({
-  cognitoClient: { send: vi.fn() },
-  COGNITO_CLIENT_ID: "test-client-id",
-  secretHash: vi.fn().mockReturnValue("hash"),
-  usernameFromEmail: (email: string) => email.toLowerCase().replace("@", "_at_"),
+vi.mock("../repositories/usersRepository.js", () => ({
+  findUserByEmail: vi.fn(),
+  insertUser: vi.fn(),
 }));
 
 vi.mock("../lib/profiles.js", () => ({
@@ -19,66 +18,86 @@ vi.mock("../middleware/auth.js", () => ({
   getAuthUser: vi.fn(),
 }));
 
-const { cognitoClient } = await import("../lib/cognito.js");
+const usersRepo = await import("../repositories/usersRepository.js");
 const authModule = await import("../middleware/auth.js");
 const { signup, login, me, switchRole } = await import("./authService.js");
 
 const fakeRes = {} as Response;
 
-describe("authService — Cognito error mapping (via signup)", () => {
+describe("authService — signup", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("maps UsernameExistsException to a friendly, specific message", async () => {
-    const err = new Error("dup");
-    err.name = "UsernameExistsException";
-    vi.mocked(cognitoClient.send).mockRejectedValue(err);
+  it("rejects a duplicate email with a friendly message", async () => {
+    vi.mocked(usersRepo.insertUser).mockResolvedValue(false);
 
-    await expect(signup({ email: "a@b.com", password: "pw" })).rejects.toMatchObject({
+    await expect(signup(fakeRes, { email: "a@b.com", password: "password1" })).rejects.toMatchObject({
       status: 400,
       message: "An account with this email already exists.",
     });
+    expect(authModule.setAuthCookie).not.toHaveBeenCalled();
   });
 
-  it("maps an unrecognized Cognito exception to a generic message (never leaks the raw error)", async () => {
-    const err = new Error("some internal AWS detail");
-    err.name = "SomeWeirdInternalException";
-    vi.mocked(cognitoClient.send).mockRejectedValue(err);
-
-    await expect(signup({ email: "a@b.com", password: "pw" })).rejects.toMatchObject({
-      status: 400,
-      message: "Something went wrong. Please try again.",
-    });
+  it("rejects a password under 8 characters before touching the database", async () => {
+    await expect(signup(fakeRes, { email: "a@b.com", password: "short" })).rejects.toThrow();
+    expect(usersRepo.insertUser).not.toHaveBeenCalled();
   });
 
-  it("succeeds and returns confirmation_required on a clean signup", async () => {
-    vi.mocked(cognitoClient.send).mockResolvedValue({} as never);
-    await expect(signup({ email: "a@b.com", password: "pw" })).resolves.toEqual({
-      status: "confirmation_required",
+  it("stores a hash (never the raw password) and logs the new user in with the picked role", async () => {
+    vi.mocked(usersRepo.insertUser).mockResolvedValue(true);
+
+    const result = await signup(fakeRes, {
+      email: "a@b.com",
+      password: "password1",
+      name: "Ada",
+      role: "candidate",
     });
+
+    const stored = vi.mocked(usersRepo.insertUser).mock.calls[0][0];
+    expect(stored.password_hash).not.toContain("password1");
+    expect(stored.password_hash.startsWith("scrypt$")).toBe(true);
+    expect(result.user).toMatchObject({ email: "a@b.com", name: "Ada" });
+    expect(authModule.setAuthCookie).toHaveBeenCalledWith(
+      fakeRes,
+      expect.objectContaining({ email: "a@b.com", activeRole: "candidate" }),
+    );
   });
 });
 
 describe("authService — login", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("maps NotAuthorizedException to 401 with a friendly message", async () => {
-    const err = new Error("bad creds");
-    err.name = "NotAuthorizedException";
-    vi.mocked(cognitoClient.send).mockRejectedValue(err);
+  it("401s for an unknown email", async () => {
+    vi.mocked(usersRepo.findUserByEmail).mockResolvedValue(null);
 
-    await expect(login(fakeRes, { email: "a@b.com", password: "wrong" })).rejects.toMatchObject({
+    await expect(login(fakeRes, { email: "a@b.com", password: "whatever" })).rejects.toMatchObject({
+      status: 401,
+      message: "Incorrect email or password.",
+    });
+  });
+
+  it("401s for a wrong password with the same message as an unknown email", async () => {
+    vi.mocked(usersRepo.findUserByEmail).mockResolvedValue({
+      sub: "user-1",
+      email: "a@b.com",
+      name: null,
+      password_hash: await hashPassword("right-password"),
+    });
+
+    await expect(login(fakeRes, { email: "a@b.com", password: "wrong-password" })).rejects.toMatchObject({
       status: 401,
       message: "Incorrect email or password.",
     });
   });
 
   it("trusts the role picked on the login screen as the active role", async () => {
-    const idToken = Buffer.from(JSON.stringify({ sub: "user-1", email: "a@b.com" })).toString("base64url");
-    vi.mocked(cognitoClient.send).mockResolvedValue({
-      AuthenticationResult: { IdToken: `header.${idToken}.sig` },
-    } as never);
+    vi.mocked(usersRepo.findUserByEmail).mockResolvedValue({
+      sub: "user-1",
+      email: "a@b.com",
+      name: null,
+      password_hash: await hashPassword("right-password"),
+    });
 
-    const result = await login(fakeRes, { email: "a@b.com", password: "pw", role: "recruiter" });
+    const result = await login(fakeRes, { email: "a@b.com", password: "right-password", role: "recruiter" });
     expect(result).toEqual({ user: { sub: "user-1", email: "a@b.com", name: undefined } });
     expect(authModule.setAuthCookie).toHaveBeenCalledWith(
       fakeRes,

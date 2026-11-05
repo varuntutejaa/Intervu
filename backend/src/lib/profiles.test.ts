@@ -13,10 +13,10 @@ describe("resolveCanonicalSub", () => {
   });
 
   it("returns the existing profile's auth_sub when one exists for this email under a different sub", async () => {
-    vi.mocked(pool.query).mockResolvedValue({ rows: [{ auth_sub: "cognito-uuid-1" }] } as never);
+    vi.mocked(pool.query).mockResolvedValue({ rows: [{ auth_sub: "local-uuid-1" }] } as never);
 
     const sub = await resolveCanonicalSub("person@example.com", "google:999");
-    expect(sub).toBe("cognito-uuid-1");
+    expect(sub).toBe("local-uuid-1");
   });
 
   it("falls through to the provided sub for a genuinely new email", async () => {
@@ -33,7 +33,7 @@ describe("resolveCanonicalSub", () => {
   });
 
   it("matches case-insensitively", async () => {
-    vi.mocked(pool.query).mockResolvedValue({ rows: [{ auth_sub: "cognito-uuid-1" }] } as never);
+    vi.mocked(pool.query).mockResolvedValue({ rows: [{ auth_sub: "local-uuid-1" }] } as never);
 
     await resolveCanonicalSub("Person@Example.com", "google:999");
     expect(vi.mocked(pool.query).mock.calls[0][0]).toContain("lower(email) = lower($1)");

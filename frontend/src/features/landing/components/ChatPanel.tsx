@@ -17,7 +17,7 @@ function formatFileSize(bytes: number) {
 // Shared dark "window" shell — same size and macOS-style traffic-light
 // header for every panel, so it opens at the exact same size regardless of
 // content underneath.
-export function PanelShell({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+function PanelShell({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   return (
     <div className="flex h-[min(90vh,calc(100vh-9rem))] w-[90vw] flex-col overflow-hidden rounded-[32px] border border-black/10 bg-[#f7f7f8] shadow-2xl">
       <div className="flex shrink-0 items-center gap-2 border-b border-black/10 px-5 py-3">

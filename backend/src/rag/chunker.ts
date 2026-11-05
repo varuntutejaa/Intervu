@@ -7,7 +7,7 @@ const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).le
 
 // chunkSize/chunkOverlap are interpreted in words (not characters) by supplying
 // a word-counting lengthFunction, so they match the assignment's "~300 words" spec exactly.
-export function createSplitter(strategy: ChunkStrategyKey): RecursiveCharacterTextSplitter {
+function createSplitter(strategy: ChunkStrategyKey): RecursiveCharacterTextSplitter {
   const def = CHUNK_STRATEGIES[strategy];
   return new RecursiveCharacterTextSplitter({
     chunkSize: def.chunkSizeWords,

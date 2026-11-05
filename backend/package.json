@@ -9,12 +9,12 @@
     "start": "node dist/index.js",
     "ingest": "tsx scripts/ingest.ts",
     "seed:jobs": "tsx scripts/seed-jobs.ts",
+    "db:init": "node scripts/init-db.mjs",
     "lint": "oxlint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.700.0",
     "@huggingface/transformers": "^4.2.0",
     "@langchain/core": "^1.2.3",
     "@langchain/textsplitters": "^1.0.1",

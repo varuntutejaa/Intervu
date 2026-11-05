@@ -1,6 +1,5 @@
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { useSessionQuery } from "../features/auth/api";
-import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
 import LoginPage from "../features/auth/pages/LoginPage";
 import SignupPage from "../features/auth/pages/SignupPage";
 import ViewCandidatesPage from "../features/candidates/pages/ViewCandidatesPage";
@@ -73,7 +72,6 @@ export const router = createBrowserRouter([
   { path: "/jobs/:id", element: <JobDetailPage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage /> },
   {
     element: <RequireAuth />,
     children: [

@@ -35,7 +35,7 @@ const jobFieldsCore = {
 export const createJobSchema = z.object(jobFieldsCore);
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 
-export const jobStatusSchema = z.enum(["open", "closed"]);
+const jobStatusSchema = z.enum(["open", "closed"]);
 
 // Every field optional — PATCH edits any subset, including just
 // { status: "closed" } to close a posting.

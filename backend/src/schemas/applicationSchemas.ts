@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { APPLICATION_STATUSES } from "../lib/applicationStatus.js";
 
-export const applicationStatusSchema = z.enum(APPLICATION_STATUSES);
+const applicationStatusSchema = z.enum(APPLICATION_STATUSES);
 
 export const listApplicationsQuerySchema = z.object({
   q: z.string().trim().optional(),

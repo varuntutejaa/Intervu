@@ -3,37 +3,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { InputGroup, SelectGroup, TextAreaGroup } from "../../../components/aurora/AuroraLayout";
 import { useUpdateJobMutation, type Job } from "../../jobs/api";
-import { jobFormSchema, jobFormValuesToPayload, type JobFormValues } from "../../jobs/schema";
-
-const JOB_TYPE_OPTIONS = ["Full-time", "Part-time", "Internship", "Contract"].map((v) => ({
-  value: v,
-  label: v,
-}));
-const WORK_MODE_OPTIONS = ["Onsite", "Remote", "Hybrid"].map((v) => ({ value: v, label: v }));
-const JOB_EXPERIENCE_OPTIONS = [
-  { value: "Fresher", label: "Fresher" },
-  { value: "1-3 Years", label: "1–3 Years" },
-  { value: "3-5 Years", label: "3–5 Years" },
-  { value: "5-10 Years", label: "5–10 Years" },
-];
-
-const TRAVEL_OPTIONS = ["None", "Up to 25%", "25-50%", "50-75%", "75-100%"].map((v) => ({
-  value: v,
-  label: v,
-}));
-
-const DISCIPLINE_OPTIONS = [
-  "Engineering",
-  "Product",
-  "Design",
-  "Sales",
-  "Marketing",
-  "Operations",
-  "Customer Support",
-  "Finance",
-  "Human Resources",
-  "Other",
-].map((v) => ({ value: v, label: v }));
+import {
+  DISCIPLINE_OPTIONS,
+  EXPERIENCE_OPTIONS,
+  JOB_TYPE_OPTIONS,
+  TRAVEL_OPTIONS,
+  WORK_MODE_OPTIONS,
+  jobFormSchema,
+  jobFormValuesToPayload,
+  type JobFormValues,
+} from "../../jobs/schema";
 
 export function EditJobModal({
   job,
@@ -181,7 +160,7 @@ export function EditJobModal({
                   placeholder="Select a level"
                   value={field.value}
                   onChange={field.onChange}
-                  options={JOB_EXPERIENCE_OPTIONS}
+                  options={EXPERIENCE_OPTIONS}
                   error={errors.experience?.message}
                 />
               )}

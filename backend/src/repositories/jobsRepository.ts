@@ -1,6 +1,6 @@
 import { pool } from "../lib/db.js";
 
-export const JOB_FIELDS =
+const JOB_FIELDS =
   "id, title, company, location, job_type, work_mode, experience, salary_min, salary_max, description, skills, application_deadline, job_code, status, created_at, travel, discipline, responsibilities, qualifications, company_logo_url";
 
 // Only used on read paths that actually display a count (list/detail) — not

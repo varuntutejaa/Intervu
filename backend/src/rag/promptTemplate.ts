@@ -32,7 +32,7 @@ Format the answer to be scannable, not one dense paragraph: break it into
 short paragraphs (2-3 sentences each) separated by a blank line, and use a
 "-" bullet list when giving multiple distinct suggestions or examples.`;
 
-export function formatContext(chunks: RetrievedChunk[]): string {
+function formatContext(chunks: RetrievedChunk[]): string {
   return chunks
     .map((c, i) => `[${i + 1}] Source: ${c.metadata.source} (Page ${c.metadata.page})\n${c.text}`)
     .join("\n\n");
